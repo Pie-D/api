@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,12 +22,26 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequestMapping("/gst-meet")
 public class Api {
     Map<String, Process> processMap = new ConcurrentHashMap<>();
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
     GstMeetService gstMeetService;
+
+    private ProcessBuilder setupProcessLogging(ProcessBuilder processBuilder, String roomId, String processType) throws IOException {
+        Path logDir = Paths.get("/logs");
+        if (!Files.exists(logDir)) {
+            Files.createDirectories(logDir);
+        }
+
+        String logFileName = "/logs/" + roomId + "_" + processType + "_" + System.currentTimeMillis() + ".log";
+        File logFile = new File(logFileName);
+
+        processBuilder.redirectOutput(logFile);
+        processBuilder.redirectError(logFile);
+        return processBuilder;
+    }
 
     @PostMapping("/check-in")
     public String startCheckInGstMeet(@RequestParam(defaultValue = "30") int durationSeconds, @RequestParam String roomId, @RequestParam String domain, @RequestParam String framerate, @RequestParam(defaultValue = "720") String height, @RequestParam(defaultValue = "1280") String width) {
@@ -36,7 +51,7 @@ public class Api {
         }
 
         try {
-            Path baseDir = Paths.get("/participants/" + roomId);
+            Path baseDir = Paths.get("/gstmeet/" + roomId);
             if (!Files.exists(baseDir)) {
                 Files.createDirectories(baseDir);
             }
@@ -47,20 +62,16 @@ public class Api {
                     "--xmpp-domain=meet.jitsi",
                     "--recv-pipeline-participant-template=videoconvert name=video ! videorate ! video/x-raw,format=RGB,width=" + width + ",height="+ height + ",framerate=" + framerate +
                             "! queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 leaky=2 ! pngenc ! identity sync=false " +
-                            "! multifilesink location=/participants/" + roomId + "/{nick}/img_%05d.png sync=false async=false " +
+                            "! multifilesink location=/gst-meet/" + roomId + "/{nick}/img_%05d.png sync=false async=false " +
                             "audioconvert name=audio ! queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 leaky=2 ! fakesink sync=false async=false"
             );
 
-
-
-
-            processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            processBuilder = setupProcessLogging(processBuilder, roomId, "checkIn");
 
             Process gstProcess = processBuilder.start();
-            processMap.put(keyProcess, gstProcess);  // Lưu tiến trình theo roomId
+            processMap.put(keyProcess, gstProcess);
 
-            scheduler.schedule(() -> gstMeetService.stopProcess(processMap,roomId,"checkIn"), durationSeconds, TimeUnit.SECONDS);
+            scheduler.schedule(() -> gstMeetService.stopProcess(processMap, roomId, "checkIn"), durationSeconds, TimeUnit.SECONDS);
 
             return "Checkin started successfully for room: " + roomId;
         } catch (IOException e) {
@@ -68,6 +79,7 @@ public class Api {
             return "Error starting checkin: " + e.getMessage();
         }
     }
+
     @PostMapping("/record-audio")
     public String startRecordVoiceGstMeet(@RequestParam String roomId, @RequestParam String domain) {
         String keyProcess = roomId + "_voice";
@@ -85,23 +97,20 @@ public class Api {
                     "--web-socket-url=wss://" + domain + "/xmpp-websocket",
                     "--room-name=" + roomId,
                     "--xmpp-domain=meet.jitsi",
-                    "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! wavenc ! filesink location=/audios/"+ roomId + ".wav"
+                    "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! wavenc ! filesink location=/audios/" + roomId + ".wav"
             );
 
-
-
-
-            processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            processBuilder = setupProcessLogging(processBuilder, roomId, "voice");
 
             Process gstProcess = processBuilder.start();
-            processMap.put(keyProcess, gstProcess);  // Lưu tiến trình theo roomId
+            processMap.put(keyProcess, gstProcess);
             return "starting record voice in: " + roomId;
         } catch (IOException e) {
             e.printStackTrace();
             return "Error starting record voice: " + e.getMessage();
         }
     }
+
     @PostMapping("/whip-connect")
     public String startSpeedToText(@RequestParam String roomId, @RequestParam String domain, @RequestParam String whipEndpoint) {
         String keyProcess = roomId + "_whip";
@@ -118,29 +127,30 @@ public class Api {
                     "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! rtpopusdepay ! opusparse ! whipclientsink name=ws signaller::whip-endpoint=" + whipEndpoint
             );
 
-            processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            processBuilder = setupProcessLogging(processBuilder, roomId, "whip");
 
             Process gstProcess = processBuilder.start();
-            processMap.put(keyProcess, gstProcess);  // Lưu tiến trình theo roomId
+            processMap.put(keyProcess, gstProcess);
 
-            return "Checkin started successfully for room: " + roomId;
+            return "WHIP connection started successfully for room: " + roomId;
         } catch (IOException e) {
             e.printStackTrace();
-            return "Error starting checkin: " + e.getMessage();
+            return "Error starting WHIP connection: " + e.getMessage();
         }
     }
+
     @PostMapping("check-in/stop")
     public String stopCheckInGstMeet(@RequestParam String roomId) {
-        return gstMeetService.stopProcess(processMap,roomId,"checkIn");
-    }
-    @PostMapping("record-audio/stop")
-    public String stopRecordVoiceGstMeet(@RequestParam String roomId) {
-        return gstMeetService.stopProcess(processMap,roomId,"audio");
-    }
-    @PostMapping("whip-connect/stop")
-    public String stopWhipConnectGstMeet(@RequestParam String roomId) {
-        return gstMeetService.stopProcess(processMap,roomId,"whip");
+        return gstMeetService.stopProcess(processMap, roomId, "checkIn");
     }
 
+    @PostMapping("record-audio/stop")
+    public String stopRecordVoiceGstMeet(@RequestParam String roomId) {
+        return gstMeetService.stopProcess(processMap, roomId, "audio");
+    }
+
+    @PostMapping("whip-connect/stop")
+    public String stopWhipConnectGstMeet(@RequestParam String roomId) {
+        return gstMeetService.stopProcess(processMap, roomId, "whip");
+    }
 }
