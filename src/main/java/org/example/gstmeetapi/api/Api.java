@@ -29,7 +29,7 @@ public class Api {
     GstMeetService gstMeetService;
 
     @PostMapping("/check-in")
-    public String startCheckInGstMeet(@RequestParam(defaultValue = "30") int durationSeconds, @RequestParam String roomId, @RequestParam String domain, @RequestParam String framerate, @RequestParam(defaultValue = "720") String height, @RequestParam(defaultValue = "1280") String width) {
+    public String startCheckInGstMeet(@RequestParam(defaultValue = "30") int durationSeconds, @RequestParam String roomId, @RequestParam String domain, @RequestParam String framerate, @RequestParam(defaultValue = "720") String height, @RequestParam(defaultValue = "1280") String width, @RequestParam String xmppDomain) {
         String keyProcess = roomId + "_checkIn";
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
             return "gst-meet is already running for room: " + roomId;
@@ -44,7 +44,7 @@ public class Api {
                     "gst-meet",
                     "--web-socket-url=wss://" + domain + "/xmpp-websocket",
                     "--room-name=" + roomId,
-                    "--xmpp-domain=meet.jitsi",
+                    "--xmpp-domain=" + xmppDomain,
                     "--recv-pipeline-participant-template=videoconvert name=video ! videorate ! video/x-raw,format=RGB,width=" + width + ",height="+ height + ",framerate=" + framerate +
                             "! queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 leaky=2 ! pngenc ! identity sync=false " +
                             "! multifilesink location=/participants/" + roomId + "/{nick}/img_%05d.png sync=false async=false " +
@@ -69,7 +69,7 @@ public class Api {
         }
     }
     @PostMapping("/record-audio")
-    public String startRecordVoiceGstMeet(@RequestParam String roomId, @RequestParam String domain) {
+    public String startRecordVoiceGstMeet(@RequestParam String roomId, @RequestParam String domain, @RequestParam String xmppDomain) {
         String keyProcess = roomId + "_voice";
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
             return "gst-meet is already running for room: " + roomId;
@@ -84,7 +84,7 @@ public class Api {
                     "gst-meet",
                     "--web-socket-url=wss://" + domain + "/xmpp-websocket",
                     "--room-name=" + roomId,
-                    "--xmpp-domain=meet.jitsi",
+                    "--xmpp-domain=" + xmppDomain,
                     "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! wavenc ! filesink location=/audios/"+ roomId + ".wav"
             );
 
@@ -103,7 +103,7 @@ public class Api {
         }
     }
     @PostMapping("/whip-connect")
-    public String startSpeedToText(@RequestParam String roomId, @RequestParam String domain, @RequestParam String whipEndpoint) {
+    public String startSpeedToText(@RequestParam String roomId, @RequestParam String domain, @RequestParam String whipEndpoint, @RequestParam String xmppDomain) {
         String keyProcess = roomId + "_whip";
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
             return "gst-meet is already running for room: " + roomId;
@@ -114,7 +114,7 @@ public class Api {
                     "gst-meet",
                     "--web-socket-url=wss://" + domain + "/xmpp-websocket",
                     "--room-name=" + roomId,
-                    "--xmpp-domain=meet.jitsi",
+                    "--xmpp-domain=" + xmppDomain,
                     "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! rtpopusdepay ! opusparse ! whipclientsink name=ws signaller::whip-endpoint=" + whipEndpoint
             );
 
