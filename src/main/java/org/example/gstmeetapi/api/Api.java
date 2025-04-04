@@ -36,7 +36,7 @@ public class Api {
         }
 
         try {
-            Path baseDir = Paths.get("/participants/" + roomId);
+            Path baseDir = Paths.get("/gstmeet/" + roomId);
             if (!Files.exists(baseDir)) {
                 Files.createDirectories(baseDir);
             }
@@ -47,7 +47,7 @@ public class Api {
                     "--xmpp-domain=" + xmppDomain,
                     "--recv-pipeline-participant-template=videoconvert name=video ! videorate ! video/x-raw,format=RGB,width=" + width + ",height="+ height + ",framerate=" + framerate +
                             "! queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 leaky=2 ! pngenc ! identity sync=false " +
-                            "! multifilesink location=/participants/" + roomId + "/{nick}/img_%05d.png sync=false async=false " +
+                            "! multifilesink location=/gstmeet/" + roomId + "/{nick}/img_%05d.png sync=false async=false " +
                             "audioconvert name=audio ! queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 leaky=2 ! fakesink sync=false async=false"
             );
 

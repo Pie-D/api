@@ -27,7 +27,7 @@ public class GstMeetService {
                     processMap.remove(keyProcess); // Xóa tiến trình sau khi dừng
                     System.out.println("CheckIn stopped for room:" + roomId + "and uploaded screenshots to MinIO!");
                     try {
-                        File roomDir = new File("/participants/" + roomId);
+                        File roomDir = new File("/gstmeet/" + roomId);
                         if (roomDir.exists() && roomDir.isDirectory()) {
                             File[] nickDirs = roomDir.listFiles(File::isDirectory);
                             if (nickDirs != null) {
