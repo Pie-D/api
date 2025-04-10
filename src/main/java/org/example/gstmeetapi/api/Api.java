@@ -104,6 +104,7 @@ public class Api {
     }
     @PostMapping("/whip-connect")
     public String startSpeedToText(@RequestParam String roomId, @RequestParam String domain, @RequestParam String whipEndpoint, @RequestParam String xmppDomain) {
+        System.out.println("whipEndpoint: " + whipEndpoint);
         String keyProcess = roomId + "_whip";
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
             return "gst-meet is already running for room: " + roomId;
