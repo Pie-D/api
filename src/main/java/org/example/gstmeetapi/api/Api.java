@@ -3,11 +3,10 @@ package org.example.gstmeetapi.api;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.example.gstmeetapi.api.dto.WhipConnectDto;
 import org.example.gstmeetapi.service.GstMeetService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,7 +25,8 @@ import java.util.concurrent.TimeUnit;
 public class Api {
     Map<String, Process> processMap = new ConcurrentHashMap<>();
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
-    GstMeetService gstMeetService;
+    @Autowired
+    private GstMeetService gstMeetService;
 
     @PostMapping("/check-in")
     public String startCheckInGstMeet(@RequestParam(defaultValue = "30") int durationSeconds, @RequestParam String roomId, @RequestParam String domain, @RequestParam String framerate, @RequestParam(defaultValue = "720") String height, @RequestParam(defaultValue = "1280") String width, @RequestParam String xmppDomain) {
@@ -103,20 +103,19 @@ public class Api {
         }
     }
     @PostMapping("/whip-connect")
-    public String startSpeedToText(@RequestParam String roomId, @RequestParam String domain, @RequestParam String whipEndpoint, @RequestParam String xmppDomain) {
-        System.out.println("whipEndpoint: " + whipEndpoint);
-        String keyProcess = roomId + "_whip";
+    public String startSpeedToText(@RequestBody WhipConnectDto whipConnectDto) {
+        String keyProcess = whipConnectDto.getRoomId() + "_whip";
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
-            return "gst-meet is already running for room: " + roomId;
+            return "gst-meet is already running for room: " + whipConnectDto.getRoomId();
         }
 
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "gst-meet",
-                    "--web-socket-url=wss://" + domain + "/xmpp-websocket",
-                    "--room-name=" + roomId,
-                    "--xmpp-domain=" + xmppDomain,
-                    "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! rtpopusdepay ! opusparse ! whipclientsink name=ws signaller::whip-endpoint=" + whipEndpoint
+                    "--web-socket-url=wss://" + whipConnectDto.getDomain() + "/xmpp-websocket",
+                    "--room-name=" + whipConnectDto.getRoomId(),
+                    "--xmpp-domain=" + whipConnectDto.getXmppDomain(),
+                    "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! rtpopusdepay ! opusparse ! whipclientsink name=ws signaller::whip-endpoint=" + whipConnectDto.getWhipEndpoint()
             );
 
             processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
@@ -125,7 +124,7 @@ public class Api {
             Process gstProcess = processBuilder.start();
             processMap.put(keyProcess, gstProcess);  // Lưu tiến trình theo roomId
 
-            return "Checkin started successfully for room: " + roomId;
+            return "Checkin started successfully for room: " + whipConnectDto.getRoomId();
         } catch (IOException e) {
             e.printStackTrace();
             return "Error starting checkin: " + e.getMessage();
@@ -144,4 +143,8 @@ public class Api {
         return gstMeetService.stopProcess(processMap,roomId,"whip");
     }
 
+
+    public void stopWhip(String roomId) {
+        gstMeetService.stopProcess(processMap,roomId,"whip");
+    }
 }
