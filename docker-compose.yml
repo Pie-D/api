@@ -1,0 +1,15 @@
+services:
+  gst-meet-api:
+    container_name: gst-meet-api
+    # image: registry.cmcati.vn/gst-meet-api/gst-meet-whip:lastest
+    build:
+      context: .
+      dockerfile: Dockerfilewhip
+    restart: unless-stopped
+    ports:
+      - "1111:8080"
+    volumes:
+      - ./logs:/outlog        # mount logs từ container ra host
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+

@@ -105,6 +105,9 @@ public class Api {
     @PostMapping("/whip-connect")
     public String startSpeedToText(@RequestBody WhipConnectDto whipConnectDto) {
         String keyProcess = whipConnectDto.getRoomId() + "_whip";
+        if(whipConnectDto.getIsRecord()){
+            keyProcess = whipConnectDto.getRoomId() + "_record";
+        }
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
             return "gst-meet is already running for room: " + whipConnectDto.getRoomId();
         }
@@ -113,6 +116,7 @@ public class Api {
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "gst-meet",
                     "--web-socket-url=wss://" + whipConnectDto.getDomain() + "/xmpp-websocket",
+                    "--nick=" + whipConnectDto.getNickname(),
                     "--room-name=" + whipConnectDto.getRoomId(),
                     "--xmpp-domain=" + whipConnectDto.getXmppDomain(),
                     "--recv-pipeline=audiomixer name=audio ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! rtpopusdepay ! opusparse ! whipclientsink name=ws signaller::whip-endpoint=" + whipConnectDto.getWhipEndpoint()

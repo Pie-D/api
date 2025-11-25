@@ -8,4 +8,6 @@ public class WhipConnectDto {
     private String domain;
     private String whipEndpoint;
     private String xmppDomain;
+    private String nickname = "CMEET-BOT";
+    private Boolean isRecord = false;
 }
