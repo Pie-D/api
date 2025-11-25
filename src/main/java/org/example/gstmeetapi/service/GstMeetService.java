@@ -3,6 +3,8 @@ package org.example.gstmeetapi.service;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.example.gstmeetapi.helper.response.ResponseObject;
+import org.example.gstmeetapi.helper.response.entity.HttpStatusHelper;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -17,7 +19,7 @@ import java.util.Map;
 public class GstMeetService {
     MinioService minioService;
 
-    public String stopProcess(Map<String, Process> processMap, String roomId, String type){
+    public ResponseObject<String> stopProcess(Map<String, Process> processMap, String roomId, String type){
         switch (type) {
             case "checkIn":{
                 String keyProcess = roomId + "_checkIn";
@@ -40,12 +42,12 @@ public class GstMeetService {
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
-                        return "CheckIn stopped, but failed to upload screenshots!";
+                        return new ResponseObject<>(HttpStatusHelper.INTERNAL_SERVER_ERROR,"CheckIn stopped, but failed to upload screenshots!");
                     }
-                    return "CheckIn stopped for room: " + roomId + " and uploaded screenshots to MinIO!";
+                    return new ResponseObject<>(HttpStatusHelper.SUCCESS,"CheckIn stopped for room: " + roomId + " and uploaded screenshots to MinIO!");
                 }
                 System.out.println("checkIn is not running for room: " + roomId);
-                return "checkIn is not running for room: " + roomId;
+                return  new ResponseObject<>(HttpStatusHelper.NOTFOUND,"checkIn is not running for room: " + roomId);
             }
             case "whip":{
                 String keyProcess = roomId + "_whip";
@@ -54,10 +56,10 @@ public class GstMeetService {
                     process.destroy();
                     processMap.remove(keyProcess); // Xóa tiến trình sau khi dừng
                     System.out.println("connecting whip stopped for room: " + roomId);
-                    return "connecting whip stopped for room: " + roomId ;
+                    return new ResponseObject<>(HttpStatusHelper.SUCCESS,"connecting whip stopped for room: " + roomId) ;
                 }
                 System.out.println("whip-connect is not running for room: " + roomId);
-                return "whip-connect is not running for room: " + roomId;
+                return new ResponseObject<>(HttpStatusHelper.NOTFOUND,"whip-connect is not running for room: " + roomId);
             }
             case "audio":{
                 String keyProcess = roomId + "_voice";
@@ -70,7 +72,7 @@ public class GstMeetService {
                         if (audiosDir.exists() && audiosDir.isDirectory()) {
                             File[] files = audiosDir.listFiles();
                             if (files == null || files.length == 0) {
-                                return "No files to upload in: " + audiosDir;
+                                return new ResponseObject<>(HttpStatusHelper.NOTFOUND,"No files to upload in: " + audiosDir);
                             }
                             String minioPath = "audios-recording/";
                             for(File file : audiosDir.listFiles()) {
@@ -80,16 +82,16 @@ public class GstMeetService {
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
-                        return "recording audio stopped, but failed to upload audio!";
+                        return new ResponseObject<>(HttpStatusHelper.INTERNAL_SERVER_ERROR,"recording audio stopped, but failed to upload audio!");
                     }
                     System.out.println("recording audio stopped for room: " + roomId + " and uploaded audio to MinIO!");
-                    return "recording audio stopped for room: " + roomId + " and uploaded audio to MinIO!";
+                    return new ResponseObject<>(HttpStatusHelper.SUCCESS,"recording audio stopped for room: " + roomId + " and uploaded audio to MinIO!");
                 }
                 System.out.println("audio-connect is not running for room: " + roomId);
-                return "recording audio is not running for room: " + roomId;
+                return new ResponseObject<>(HttpStatusHelper.NOTFOUND,"recording audio is not running for room: " + roomId);
             }
         }
-        return null;
+        return new ResponseObject<>(HttpStatusHelper.NOTFOUND,"Type is valid: " + type);
     }
 
     private void deleteFolder(File folder) throws IOException {

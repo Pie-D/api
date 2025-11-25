@@ -4,8 +4,11 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.gstmeetapi.api.dto.WhipConnectDto;
+import org.example.gstmeetapi.helper.response.ResponseObject;
+import org.example.gstmeetapi.helper.response.entity.HttpStatusHelper;
 import org.example.gstmeetapi.service.GstMeetService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -103,13 +106,13 @@ public class Api {
         }
     }
     @PostMapping("/whip-connect")
-    public String startSpeedToText(@RequestBody WhipConnectDto whipConnectDto) {
+    public ResponseEntity<?> startSpeedToText(@RequestBody WhipConnectDto whipConnectDto) {
         String keyProcess = whipConnectDto.getRoomId() + "_whip";
         if(whipConnectDto.getIsRecord()){
-            keyProcess = whipConnectDto.getRoomId() + "_record";
+            keyProcess = whipConnectDto.getRoomId() + "_record_whip";
         }
         if (processMap.containsKey(keyProcess) && processMap.get(keyProcess).isAlive()) {
-            return "gst-meet is already running for room: " + whipConnectDto.getRoomId();
+            return ResponseEntity.ok(new ResponseObject<>(HttpStatusHelper.HAS_AREA,"Cmeet-bot is already running for room: " + whipConnectDto.getRoomId()));
         }
 
         try {
@@ -128,23 +131,23 @@ public class Api {
             Process gstProcess = processBuilder.start();
             processMap.put(keyProcess, gstProcess);  // Lưu tiến trình theo roomId
 
-            return "Checkin started successfully for room: " + whipConnectDto.getRoomId();
+            return ResponseEntity.ok(new ResponseObject<>(HttpStatusHelper.SUCCESS,"Speech to text started successfully for room: " + whipConnectDto.getRoomId()));
         } catch (IOException e) {
             e.printStackTrace();
-            return "Error starting checkin: " + e.getMessage();
+            return ResponseEntity.ok(new ResponseObject<>(HttpStatusHelper.INTERNAL_SERVER_ERROR,"Error starting STT: " + e.getMessage()));
         }
     }
     @PostMapping("check-in/stop")
-    public String stopCheckInGstMeet(@RequestParam String roomId) {
-        return gstMeetService.stopProcess(processMap,roomId,"checkIn");
+    public ResponseEntity<?> stopCheckInGstMeet(@RequestParam String roomId) {
+        return ResponseEntity.ok(gstMeetService.stopProcess(processMap,roomId,"checkIn"));
     }
     @PostMapping("record-audio/stop")
-    public String stopRecordVoiceGstMeet(@RequestParam String roomId) {
-        return gstMeetService.stopProcess(processMap,roomId,"audio");
+    public ResponseEntity<?> stopRecordVoiceGstMeet(@RequestParam String roomId) {
+        return ResponseEntity.ok(gstMeetService.stopProcess(processMap,roomId,"audio"));
     }
     @PostMapping("whip-connect/stop")
-    public String stopWhipConnectGstMeet(@RequestParam String roomId) {
-        return gstMeetService.stopProcess(processMap,roomId,"whip");
+    public ResponseEntity<?> stopWhipConnectGstMeet(@RequestParam String roomId) {
+        return ResponseEntity.ok(gstMeetService.stopProcess(processMap,roomId,"whip"));
     }
 
 

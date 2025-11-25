@@ -69,4 +69,4 @@ EXPOSE 8080
 
 # API runtime entrypoint
 #CMD ["sh", "-c", "java -jar /opt/gst-meet-api.jar > /outlog.log 2>&1"]
-CMD java -jar /opt/gst-meet-api.jar > /outlog.log 2>&1
+CMD java -jar /opt/gst-meet-api.jar
